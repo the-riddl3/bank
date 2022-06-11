@@ -143,7 +143,7 @@ class CardController extends Controller
         // save to redis
         $predis->rpush('list:transactions',[$transaction]);
 
-        // Uncomment,
+        // Uncomment to see redis transactions
 //        dd($predis->lrange('list:transactions', 0, -1));
 
         return redirect()->back();

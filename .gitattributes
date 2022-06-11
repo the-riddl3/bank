@@ -8,4 +8,4 @@
 
 /.github export-ignore
 CHANGELOG.md export-ignore
-public export-ignore
+public/* linguist-vendored
