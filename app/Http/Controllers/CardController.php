@@ -8,23 +8,27 @@ use App\Http\Requests\UpdateCardRequest;
 use App\Http\Resources\CardResource;
 use App\Http\Resources\CardTypeResource;
 use App\Models\Card;
+use App\Models\Transaction;
 use App\Models\User;
+use App\Providers\PredisServiceProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Queue;
+use Predis\Client;
 
 class CardController extends Controller
 {
     public function index()
     {
-        return view('cards.index',[
+        return view('cards.index', [
             'cards' => auth()->user()->cards,
         ]);
     }
 
     public function create()
     {
-        return view('cards.create',[
-           'types' => CardTypeResource::collection(CardTypeEnum::cases()),
+        return view('cards.create', [
+            'types' => CardTypeResource::collection(CardTypeEnum::cases()),
         ]);
     }
 
@@ -42,14 +46,14 @@ class CardController extends Controller
 
     public function show(Card $card)
     {
-        return view('cards.show',[
+        return view('cards.show', [
             'card' => new CardResource($card),
         ]);
     }
 
     public function edit(Card $card)
     {
-        return view('cards.edit',[
+        return view('cards.edit', [
             'card' => new CardResource($card),
         ]);
     }
@@ -65,26 +69,27 @@ class CardController extends Controller
     public function destroy(Card $card)
     {
         // authorize if user can delete card
-        $this->authorize('delete',$card);
+        $this->authorize('delete', $card);
 
         $card->delete();
 
         return redirect('/');
     }
 
-    public function withdraw(Request $request,Card $card) {
+    public function withdraw(Request $request, Card $card)
+    {
         // validation
         $validated = $request->validate([
             'amount' => 'required|min:0'
         ]);
 
         // authorize
-        $this->authorize('update',$card);
+        $this->authorize('update', $card);
 
         // withdraw
         $success = $card->withdraw($validated['amount']);
 
-        if(!$success) {
+        if (!$success) {
             return redirect()->back()->withErrors([
                 'message' => 'not enough balance'
             ]);
@@ -93,19 +98,20 @@ class CardController extends Controller
         return redirect()->back();
     }
 
-    public function deposit(Request $request,Card $card) {
+    public function deposit(Request $request, Card $card)
+    {
         // validation
         $validated = $request->validate([
             'amount' => 'required|min:0'
         ]);
 
         // authorize
-        $this->authorize('update',$card);
+        $this->authorize('update', $card);
 
         // deposit
         $success = $card->deposit($validated['amount']);
 
-        if(!$success) {
+        if (!$success) {
             return redirect()->back()->withErrors([
                 'message' => 'not enough balance'
             ]);
@@ -114,7 +120,8 @@ class CardController extends Controller
         return redirect()->back();
     }
 
-    public function transfer(Request $request,Card $card) {
+    public function transfer(Request $request, Card $card, Client $predis)
+    {
         // validation
         $validated = $request->validate([
             'receiver_card_id' => 'required|exists:cards,id',
@@ -122,19 +129,19 @@ class CardController extends Controller
         ]);
 
         // authorize
-        $this->authorize('update',$card);
+        $this->authorize('update', $card);
 
-        // transfer
-        $success = $card->transfer(Card::find(
-            $validated['receiver_card_id']),
-            $validated['amount']
-        );
-
-        if(!$success) {
-            return redirect()->back()->withErrors([
-                'message' => 'not enough balance'
-            ]);
+        // if balance not enough
+        if ($card->balance < $validated['amount']) {
+            return redirect()->back()->withErrors(['message' => 'balance not enough']);
         }
+
+        // if all is well - queue transaction job
+        $transaction = new Transaction($card->id, $validated['receiver_card_id'], $validated['amount']);
+        // serialize
+        $transaction = serialize($transaction);
+        // save to redis
+        $predis->rpush('transactions',[$transaction]);
 
         return redirect()->back();
     }
