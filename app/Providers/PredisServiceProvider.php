@@ -15,7 +15,7 @@ class PredisServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->singleton(Client::class, function($app) {
-            return new Client(env('REDIS_HOST') ?? 'tcp://localhost:6379');
+            return new Client((env('REDIS_HOST') ?? 'tcp://localhost') . ":6379");
         });
     }
 

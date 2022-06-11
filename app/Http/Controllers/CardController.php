@@ -139,9 +139,12 @@ class CardController extends Controller
         // if all is well - queue transaction job
         $transaction = new Transaction($card->id, $validated['receiver_card_id'], $validated['amount']);
         // serialize
-        $transaction = serialize($transaction);
+        $transaction = json_encode($transaction);
         // save to redis
-        $predis->rpush('transactions',[$transaction]);
+        $predis->rpush('list:transactions',[$transaction]);
+
+        // Uncomment,
+//        dd($predis->lrange('list:transactions', 0, -1));
 
         return redirect()->back();
     }

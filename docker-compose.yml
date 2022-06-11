@@ -44,6 +44,15 @@ services:
             test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
             retries: 3
             timeout: 5s
+    redis:
+        image: redis:alpine
+        command: redis-server --appendonly yes
+        volumes:
+            - ./data/redis:/data
+        ports:
+            - "${REDIS_PORT:-6379}:6379"
+        networks:
+            - sail
 networks:
     sail:
         driver: bridge
