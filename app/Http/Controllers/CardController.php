@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CardTypeEnum;
+use App\Enums\TransactionStatusEnum\TransactionStatusEnum;
 use App\Http\Requests\StoreCardRequest;
 use App\Http\Requests\UpdateCardRequest;
 use App\Http\Resources\CardResource;
 use App\Http\Resources\CardTypeResource;
 use App\Models\Card;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,7 +45,7 @@ class CardController extends Controller
     public function show(Card $card)
     {
         return view('cards.show',[
-            'card' => new CardResource($card),
+            'card' => $card,
         ]);
     }
 
@@ -135,6 +137,14 @@ class CardController extends Controller
                 'message' => 'not enough balance'
             ]);
         }
+
+        // record transaction
+        Transaction::create([
+            'receiver_card_id' => $validated['receiver_card_id'],
+            'sender_card_id' => $card->id,
+            'amount' => $validated['amount'],
+            'status' => TransactionStatusEnum::COMPLETE,
+        ]);
 
         return redirect()->back();
     }

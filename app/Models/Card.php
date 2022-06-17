@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\CardTypeEnum;
+use App\Http\Resources\CardResource;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,10 +14,34 @@ class Card extends Model
     use HasFactory;
 
     protected $fillable = ['type','user_id','expiry'];
+    protected $appends = ['image'];
 
     protected $casts = [
         'type' => CardTypeEnum::class,
     ];
+
+    public function getImageAttribute() {
+        $type = $this->type->name();
+        return "/img/card/$type.png";
+    }
+
+    public function sent() {
+        return $this->hasMany(Transaction::class,'sender_card_id')
+            ->orderBy('created_at','desc');
+    }
+
+    public function received() {
+        return $this->hasMany(Transaction::class,'receiver_card_id')
+            ->orderBy('created_at','desc');
+    }
+
+    public function transactions(): Builder
+    {
+        return Transaction::query()
+            ->where('sender_card_id',$this->id)
+            ->orWhere('receiver_card_id',$this->id)
+            ->orderBy('created_at','desc');
+    }
 
     public function cardholder(): BelongsTo
     {

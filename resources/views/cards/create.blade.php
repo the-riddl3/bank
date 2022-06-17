@@ -5,24 +5,18 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 bg-white border-b border-gray-200">
-                    <form action="{{route('cards.store')}}" method="post">
-                        @csrf
-                        <label>
-                            Card Type
-                            <select name="type">
-                                @foreach($types as $type)
-                                    <option value="{{$type->value}}">{{$type->name}}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <button>create</button>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <div class="p-4 w-1/3 flex justify-center items-center bg-white overflow-hidden shadow-sm sm:rounded-lg">
+        <form class="flex flex-col w-1/3 justify-center items-center" action="{{route('cards.store')}}" method="post">
+            @csrf
+            <label>
+                Card Type
+                <select name="type">
+                    @foreach($types as $type)
+                        <option value="{{$type->value}}">{{$type->name}}</option>
+                    @endforeach
+                </select>
+            </label>
+            <x-button class="my-2">create</x-button>
+        </form>
     </div>
 </x-app-layout>

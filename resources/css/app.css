@@ -7,6 +7,14 @@
         @apply text-white py-2 px-4 bg-orange-500 hover:bg-orange-700 font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-75;
     }
 
+    .card-regular {
+        @apply text-blue-400;
+    }
+
+    .card-gold {
+        @apply text-yellow-500;
+    }
+
     .input-primary {
         @apply focus:outline-none border-orange-300 rounded-md focus:ring-orange-300 focus:border-orange-700;
     }

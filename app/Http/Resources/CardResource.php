@@ -12,6 +12,7 @@ class CardResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type,
             'balance' => $this->balance,
+            'transactionArray' => $this->transactions()->get(),
             'cardholder' => $this->cardholder,
             'expiry' => $this->expiry,
         ];
