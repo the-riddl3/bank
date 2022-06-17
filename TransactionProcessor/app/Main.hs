@@ -74,8 +74,6 @@ main = do
     print "transaction processing done"
 
 
-    
-
 -- get transaction bytestring from Redis
 fetchTransactionRedis :: Database.Redis.Connection -> IO (Data.ByteString.ByteString)
 fetchTransactionRedis conn = runRedis conn $ do

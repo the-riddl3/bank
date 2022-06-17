@@ -153,7 +153,7 @@
                         @method('PATCH')
                         <!-- Modal body -->
                             <div class="p-6 space-y-6 flex flex-col items-center justify-center">
-                                <input class="input-primary" type="number" name="amount" placeholder="amount" min="0">
+                                <input class="input-primary" type="number" name="amount" placeholder="amount" min="0" step="0.01">
                                 <div>
                                     <input name="receiver_card_id" x-model="receiverId" @input.debounce="receiverName = (await getCard(receiverId)).cardholder.name" class="input-primary" type="text" placeholder="receiver card" id="receiverCard">
                                     <p x-text="receiverName"></p>

@@ -120,7 +120,7 @@ class CardController extends Controller
         return redirect()->back();
     }
 
-    public function transfer(Request $request, Card $card, Client $predis)
+    public function transfer(Request $request, int $card_id, Client $predis): \Illuminate\Http\RedirectResponse
     {
         // validation
         $validated = $request->validate([
@@ -128,23 +128,15 @@ class CardController extends Controller
             'amount' => 'required|min:0',
         ]);
 
-        // authorize
-        $this->authorize('update', $card);
-
-        // if balance not enough
-        if ($card->balance < $validated['amount']) {
-            return redirect()->back()->withErrors(['message' => 'balance not enough']);
-        }
-
         // if all is well - queue transaction job
-        $transaction = new Transaction($card->id, $validated['receiver_card_id'], $validated['amount']);
+        $transaction = new Transaction($card_id, $validated['receiver_card_id'], $validated['amount']);
         // serialize
         $transaction = json_encode($transaction);
         // save to redis
         $predis->rpush('list:transactions',[$transaction]);
 
         // Uncomment to see redis transactions
-//        dd($predis->lrange('list:transactions', 0, -1));
+        dd($predis->lrange('list:transactions', 0, -1));
 
         return redirect()->back();
     }

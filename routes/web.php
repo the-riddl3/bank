@@ -36,9 +36,8 @@ Route::middleware('auth')->group(function() {
         ->group(function () {
             Route::patch('withdraw', 'withdraw')->name('withdraw');
             Route::patch('deposit', 'deposit')->name('deposit');
-            Route::patch('transfer', 'transfer')->name('transfer');
         });
-
+    Route::patch('cards/{card_id}/transfer', [CardController::class,'transfer'])->name('cards.transfer');
 });
 
 require __DIR__.'/auth.php';
