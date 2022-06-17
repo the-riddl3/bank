@@ -25,6 +25,7 @@ dependencies:
 - mtl
 - aeson
 - HDBC
+- HDBC-odbc
 - bytestring
 - text
 
