@@ -1,39 +1,33 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
-import Database.Redis hiding (decode)
+import Database.Redis
+    ( lpop,
+      connect,
+      defaultConnectInfo,
+      disconnect,
+      runRedis,
+      ConnectInfo(connectPort),
+      Connection,
+      PortID(PortNumber) )
 import Database.HDBC
-import Database.HDBC.ODBC
-import Data.ByteString
+    ( toSql, IConnection(run, commit, disconnect) )
+import Database.HDBC.ODBC ( connectODBC, Connection )
+import Data.ByteString ( ByteString )
 import Data.ByteString.Char8 (pack, unpack)
-import Data.ByteString.Lazy
-import Data.Text.Encoding
-import System.Exit
-import Data.Either
-import Data.Aeson
-import Control.Monad.Trans
-import Data.Maybe
-import GHC.Generics
-import Data.Void
+import Data.ByteString.Lazy ( fromStrict )
+import Data.Aeson ( decode, FromJSON, ToJSON )
+import GHC.Generics ( Generic )
+import Prelude hiding (id)
 
 
 -- data types
 data Transaction = Transaction
-  { sender_card_id :: Int,
+  { id :: Int,
+    sender_card_id :: Int,
     receiver_card_id :: Int,
     amount :: Double
   }
   deriving (Show, Generic)
-
-
--- retrieval functions
-getSender :: Transaction -> Int
-getSender (Transaction {sender_card_id = sender}) = sender
-
-getReceiver :: Transaction -> Int
-getReceiver (Transaction {receiver_card_id = receiver}) = receiver
-
-getAmount :: Transaction -> Double
-getAmount (Transaction {amount = amount}) = amount
 
 instance FromJSON Transaction
 instance ToJSON Transaction
@@ -51,22 +45,10 @@ main = do
     connRedis <- connect myConnectInfo
     -- connect to Db
     connDb <- connectODBC "Driver={MySQL};Server=localhost;Port=3089;Database=bank;User=root;Password=admin;Option=3;"
-    -- connDb <- connectODBC "DSN=mysql://root:admin@localhost:3089/bank"
 
-    -- get oldest pending transaction
-    transactionString <- fetchTransactionRedis connRedis
-    let maybeTransaction = decode (fromStrict transactionString) :: Maybe Transaction
-  
-    -- process transaction
-    case maybeTransaction of
-      Just transaction -> do
-        -- manipulate balances
-        decrementBalanceDb connDb (getSender transaction) (getAmount transaction)
-        incrementBalanceDb connDb (getReceiver transaction) (getAmount transaction)
-        -- commit transaction
-        commit connDb
-      _ -> print "no transactions"
-    
+    -- process all pending transactions from redis queue
+    processTransactions connDb connRedis
+
     -- close connections
     Database.HDBC.disconnect connDb
     Database.Redis.disconnect connRedis
@@ -74,8 +56,38 @@ main = do
     print "transaction processing done"
 
 
+-- process transactions until redis queue is empty
+processTransactions :: Database.HDBC.ODBC.Connection -> Database.Redis.Connection -> IO ()
+processTransactions connDb connRedis = do
+  -- retrieve oldest pending transaction from redis queue
+  transactionString <- fetchTransactionRedis connRedis
+  let maybeTransaction = decode (fromStrict transactionString) :: Maybe Transaction
+
+  case maybeTransaction of
+    Nothing -> print "no pending transactions"
+    Just transaction -> do
+      -- process transaction
+      processTransaction connDb transaction
+      -- recurse
+      processTransactions connDb connRedis
+
+
+-- process transaction
+processTransaction :: Database.HDBC.ODBC.Connection -> Transaction -> IO ()
+processTransaction connDb transaction = do
+  -- update balances
+  decrementBalanceDb connDb (sender_card_id transaction) (amount transaction)
+  incrementBalanceDb connDb (receiver_card_id transaction) (amount transaction)
+  -- update transaction status to complete
+  setTransactionStatus connDb (id transaction) 1
+  -- commit transaction
+  commit connDb
+  -- print success message
+  print $ "transaction complete: " ++ show (sender_card_id transaction) ++ " -> " ++ show (receiver_card_id transaction) ++ " amount: " ++ show (amount transaction)
+
+
 -- get transaction bytestring from Redis
-fetchTransactionRedis :: Database.Redis.Connection -> IO (Data.ByteString.ByteString)
+fetchTransactionRedis :: Database.Redis.Connection -> IO Data.ByteString.ByteString
 fetchTransactionRedis conn = runRedis conn $ do
   result <- lpop "list:transactions"
   case result of
@@ -85,11 +97,15 @@ fetchTransactionRedis conn = runRedis conn $ do
 
 -- update card in database
 incrementBalanceDb :: Database.HDBC.ODBC.Connection -> Int -> Double -> IO Integer
-incrementBalanceDb conn card_id amount = do
+incrementBalanceDb conn card_id amount =
   run conn "UPDATE cards SET balance = balance + ? where id=?;" [toSql amount,toSql card_id]
 
 decrementBalanceDb :: Database.HDBC.ODBC.Connection -> Int -> Double -> IO Integer
-decrementBalanceDb conn card_id amount = do
+decrementBalanceDb conn card_id amount =
   run conn "UPDATE cards SET balance = balance - ? where id=?;" [toSql amount,toSql card_id]
-  
 
+
+-- set transaction status
+setTransactionStatus :: Database.HDBC.ODBC.Connection -> Int -> Int -> IO Integer
+setTransactionStatus conn transaction_id status =
+  run conn "UPDATE transactions SET status = ? where id=?;" [toSql status,toSql transaction_id]

@@ -46,7 +46,7 @@
                             <!-- Modal body -->
                                 <div class="p-6 space-y-6">
                                     <input class="input-primary" type="number" name="amount" placeholder="amount"
-                                           min="0"/>
+                                           min="0" step="0.01"/>
                                 </div>
                                 <!-- Modal footer -->
                                 <div
@@ -151,7 +151,7 @@
                             <!-- Modal body -->
                                 <div class="p-6 space-y-6 flex flex-col items-center justify-center">
                                     <input class="input-primary" type="number" name="amount" placeholder="amount"
-                                           min="0">
+                                           min="0" step="0.01">
                                     <div>
                                         <input name="receiver_card_id" x-model="receiverId"
                                                @input="receiverName = (await getCard(receiverId)).cardholder.name"
@@ -179,7 +179,7 @@
         </div>
 
         <!-- transactions -->
-        <div class="border-4 border-gray-300 flex-grow p-4 relative overflow-x-auto shadow-md sm:rounded-lg">
+        <div class="border-4 border-gray-300 flex-grow p-4 relative overflow-x-auto shadow-md sm:rounded-lg" style="height: 300px">
             <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                 <tr>

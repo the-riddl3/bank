@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CardTypeEnum;
+use App\Enums\TransactionStatusEnum\TransactionStatusEnum;
 use App\Http\Requests\StoreCardRequest;
 use App\Http\Requests\UpdateCardRequest;
 use App\Http\Resources\CardResource;
 use App\Http\Resources\CardTypeResource;
 use App\Models\Card;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Predis\Client;
 
 class CardController extends Controller
 {
@@ -114,7 +117,28 @@ class CardController extends Controller
         return redirect()->back();
     }
 
-    public function transfer(Request $request,Card $card) {
+    public function transfer(Request $request,int $card_id,Client $predis) {
+        // validation
+        $validated = $request->validate([
+            'receiver_card_id' => 'required|exists:cards,id',
+            'amount' => 'required|min:0',
+        ]);
+
+        // create a pending transaction
+        $transaction = Transaction::create([
+            'sender_card_id' => $card_id,
+            'receiver_card_id' => (int)$validated['receiver_card_id'],
+            'amount' => (float)$validated['amount'],
+            'status' => TransactionStatusEnum::PENDING,
+        ]);
+
+        // rpush serialized transaction to redis queue
+        $predis->rpush('list:transactions',[$transaction->toJson()]);
+
+        return redirect()->back();
+    }
+
+    public function transferSlow(Request $request,Card $card) {
         // validation
         $validated = $request->validate([
             'receiver_card_id' => 'required|exists:cards,id',
