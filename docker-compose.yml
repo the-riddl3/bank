@@ -45,14 +45,17 @@ services:
             retries: 3
             timeout: 5s
     redis:
-        image: redis:alpine
-        command: redis-server --appendonly yes
+        image: 'redis:alpine'
+        ports:
+            - '${FORWARD_REDIS_PORT:-6379}:6379'
         volumes:
             - ./data/redis:/data
-        ports:
-            - "${REDIS_PORT:-6379}:6379"
         networks:
             - sail
+        healthcheck:
+            test: [ "CMD", "redis-cli", "ping" ]
+            retries: 3
+            timeout: 5s
 networks:
     sail:
         driver: bridge
