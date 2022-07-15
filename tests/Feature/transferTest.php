@@ -15,13 +15,13 @@ class transferTest extends TestCase
 {
     use DatabaseMigrations;
 
-    private const TRANSACTION_NUMBER = 10000;
+    private const TRANSACTION_NUMBER = 100;
 
-//    protected function tearDown(): void
-//    {
-//        // clear redis
-//        Redis::connection()->flushAll();
-//    }
+    protected function tearDown(): void
+    {
+        // clear redis
+        Redis::connection()->flushAll();
+    }
 
     public function test_transfer()
     {
